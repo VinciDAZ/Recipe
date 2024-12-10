@@ -1,16 +1,21 @@
 import React from 'react';
-function Login () {
+import AuthPageInput
+ from './Login';
+function AuthPage () {
 
     const [username, setUsername] = React.useState("");
     const [password, setPassword] = React.useState("");
+    const [fName, setfName] = React.useState("");
+    const [lName, setlName] = React.useState("");
+    const [email, setEmail] = React.useState("");
     const [register, setRegister] = React.useState(false)
   
     const handleSubmit = (event) => {
       event.preventDefault();
-      if (username && password) {
+      if (register === false && username && password) {
         alert(`Welcome, ${username}!`);
       } else {
-        alert("Please fill in both fields.");
+        alert("Please fill in all fields.");
       }
     };
 
@@ -22,35 +27,31 @@ function Login () {
     
         if (register === false) {
     
-        return (<div className="login-container">
+        return (
+        <div className="login-container">
           <div className="login-box">
             <h2>Login</h2>
             <form onSubmit={handleSubmit}>
-              <div className="input-group">
-                <label htmlFor="username">Username</label>
-                <input
-                  type="text"
-                  id="username"
-                  name="username"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  required
+              
+                <AuthPageInput 
+                type="text"
+                id="username"
+                name="username"
+                placeholder="Enter your username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
                 />
-              </div>
-              <div className="input-group">
-                <label htmlFor="password">Password</label>
-                <input
+          
+                <AuthPageInput
                   type="password"
                   id="password"
                   name="password"
                   placeholder="Enter your password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  required
+                
                 />
-              </div>
-
+              
               <button type="submit" className="login-button">
                 Login
               </button>
@@ -61,37 +62,60 @@ function Login () {
             </form>
           </div>
         </div>)
-    } else {        return (<div className="login-container">
+    } else {        
+      return (
+      <div className="login-container">
         <div className="login-box">
-          <h2>Login</h2>
+          <h2>Create a new account</h2>
           <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <label htmlFor="username">Username</label>
-              <input
+
+          <AuthPageInput 
+                type="text"
+                id="fName"
+                name="fName"
+                placeholder="Enter your First Name"
+                value={fName}
+                onChange={(event) => setfName(event.target.value)}
+                />
+          <AuthPageInput 
+                type="text"
+                id="lName"
+                name="lName"
+                placeholder="Enter your Last Name"
+                value={lName}
+                onChange={(event) => setlName(event.target.value)}
+                />
+          
+          <AuthPageInput  
+               type="text"
+               id="email"
+               name="email"
+               placeholder="Enter your email"
+               value={email}
+               onChange={(event) => setEmail(event.target.value)}
+               />
+         
+          
+          <AuthPageInput
                 type="text"
                 id="username"
                 name="username"
                 placeholder="Enter your username"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                required
-              />
-            </div>
-            <div className="input-group">
-              <label htmlFor="password">Password</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </div>
+                />
+          
+          <AuthPageInput
+                  type="password"
+                  id="password"
+                  name="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
 
             <button type="submit" className="login-button">
-              Login
+              Sign Up
             </button>
 
             <button onClick ={handleRegister} type="register" className="register-button">

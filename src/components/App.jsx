@@ -4,7 +4,7 @@ import AuthPage from './AuthPage';
 function App() {
   return (
     <div className="App">
-        <Login />
+        <AuthPage />
     </div>
   );
 }
