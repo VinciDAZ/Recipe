@@ -1,56 +1,74 @@
 import React from 'react';
-import AuthPageInput
- from './Login';
+import AuthPageInput from './AuthPageInput';
 function AuthPage () {
 
-    const [username, setUsername] = React.useState("");
-    const [password, setPassword] = React.useState("");
-    const [fName, setfName] = React.useState("");
-    const [lName, setlName] = React.useState("");
-    const [email, setEmail] = React.useState("");
-    const [register, setRegister] = React.useState(false)
-  
-    const handleSubmit = (event) => {
-      event.preventDefault();
-      if (register === false && username && password) {
-        alert(`Welcome, ${username}!`);
-      } else {
-        alert("Please fill in all fields.");
-      }
-    };
+  const [userInfo, setUserInfo] = React.useState({
+    fName: "",
+    lName: "",
+    username: "",
+    password: "",
+    email:"",
+  })
 
-    const handleRegister = () => {
-        setRegister((prevRegister) => !prevRegister)
-        console.log({register})
+  // const [username, setUsername] = React.useState("");
+  // const [password, setPassword] = React.useState("");
+  // const [fName, setfName] = React.useState("");
+  // const [lName, setlName] = React.useState("");
+  // const [email, setEmail] = React.useState("");
+   const [register, setRegister] = React.useState(false)
+  
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (register === false && userInfo.username && userInfo.password) {
+      alert(`Welcome, ${userInfo.username}!`);
+    } else {
+      alert("Please fill in all fields.");
     }
+  };
+
+  const handleChange = (event) => {
+    const {value, name} = event.target;
+
+    setUserInfo(prevValue => {
+        return{
+          ...prevValue,
+            [name] : value
+        };
+      
+    } )
+
+  }
+
+  const handleRegister = () => {
+      setRegister((prevRegister) => !prevRegister)
+      console.log({register})
+  }
   
     
-        if (register === false) {
-    
-        return (
-        <div className="login-container">
+    if (register === false) {
+      return (
+       <div className="login-container">
           <div className="login-box">
             <h2>Login</h2>
             <form onSubmit={handleSubmit}>
               
-                <AuthPageInput 
+              <AuthPageInput 
                 type="text"
                 id="username"
                 name="username"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                />
+                placeholder="username"
+                value={userInfo.username}
+                onChange={handleChange}
+              />
           
-                <AuthPageInput
+              <AuthPageInput
                   type="password"
                   id="password"
                   name="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                
-                />
+                  placeholder="password"
+                  value={userInfo.password}
+                  onChange={handleChange}
+              />
               
               <button type="submit" className="login-button">
                 Login
@@ -62,7 +80,8 @@ function AuthPage () {
             </form>
           </div>
         </div>)
-    } else {        
+    } 
+    else {        
       return (
       <div className="login-container">
         <div className="login-box">
@@ -73,26 +92,26 @@ function AuthPage () {
                 type="text"
                 id="fName"
                 name="fName"
-                placeholder="Enter your First Name"
-                value={fName}
-                onChange={(event) => setfName(event.target.value)}
+                placeholder="first Name"
+                value={userInfo.fName}
+                onChange={handleChange}
                 />
           <AuthPageInput 
                 type="text"
                 id="lName"
                 name="lName"
-                placeholder="Enter your Last Name"
-                value={lName}
-                onChange={(event) => setlName(event.target.value)}
+                placeholder="last Name"
+                value={userInfo.lName}
+                onChange={handleChange}
                 />
           
           <AuthPageInput  
                type="text"
                id="email"
                name="email"
-               placeholder="Enter your email"
-               value={email}
-               onChange={(event) => setEmail(event.target.value)}
+               placeholder="email"
+               value={userInfo.email}
+               onChange={handleChange}
                />
          
           
@@ -100,18 +119,18 @@ function AuthPage () {
                 type="text"
                 id="username"
                 name="username"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
+                placeholder="username"
+                value={userInfo.username}
+                onChange={handleChange}
                 />
           
           <AuthPageInput
                   type="password"
                   id="password"
                   name="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="new password"
+                  value={userInfo.password}
+                  onChange={handleChange}
                 />
 
             <button type="submit" className="login-button">

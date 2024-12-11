@@ -3,10 +3,8 @@ import React from 'react'
 function AuthPageInput (props){
 
 return(
-
     <div> 
          <div className="input-group">
-        
                 <input
                   type={props.type}
                   id={props.id}
@@ -18,11 +16,6 @@ return(
                 />
                 </div>
                 </div>)
-               
-
-
-
-
 }
 
 export default AuthPageInput
