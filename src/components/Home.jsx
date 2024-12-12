@@ -20,11 +20,11 @@ const navigate = useNavigate();
         <button className="sign-out-btn" onClick={handleSignOut}>Sign Out</button>
 
     <div className="gallery-container">
-        {items.map((item, index) => (
+        {items.map((item) => (
         <div 
         onClick={onClicker} 
         className="gallery-item" 
-        key={index}
+        key={item.key}
         style={{ cursor: "pointer" }}
         >
           <img src={item.image} alt={item.title} className="gallery-image" />
