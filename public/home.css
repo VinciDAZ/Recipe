@@ -1,16 +1,19 @@
-
+/* Gallery.css */
 .gallery-container {
     display: flex;
-    flex-direction: row; /* Ensure horizontal layout */
+    flex-wrap: wrap; /* Allow items to wrap to a new line */
     gap: 16px;
     justify-content: flex-start; /* Align items to the left */
     padding: 20px;
     background-color: #f9f9f9;
-    overflow-x: auto; /* Allow horizontal scrolling if items overflow */
+    width: 100%; /* Ensure the gallery container takes up the full width */
+    box-sizing: border-box; /* Include padding in the element's total width */
+    margin: 0 auto; /* Center the gallery container horizontally */
+    max-width: 100vw; /* Allow the container to take full width of viewport */
   }
   
   .gallery-item {
-    width: 200px;
+    width: 350px; /* Adjusted item width */
     text-align: center;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -37,3 +40,53 @@
     color: #333;
     background-color: #fff;
   }
+  
+  /* Header styling */
+  header {
+    display: flex;
+    justify-content: center; /* Horizontally center the header */
+    align-items: center; /* Vertically center the header */
+    height: 150px; /* Height of the header */
+    width: 100%; /* Full width */
+    font-size: 28px; /* Increased font size */
+    font-weight: bold;
+    background-color: #FFD580; /* Optional background color */
+    color: #fff; /* Optional text color */
+    margin: 0;
+  }
+  
+  /* Sign-out button styling */
+  .sign-out-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  .sign-out-btn:hover {
+    background-color: #ff1a1a;
+  }
+  
+  /* Centering the entire content in the body */
+  .parent-container {
+    width: 100%; /* Full width */
+    height: 100vh; /* Full height of the viewport */
+    display: flex;
+    flex-direction: column; /* Stack header and gallery vertically */
+    justify-content: flex-start; /* Start with header */
+  }
+  
+  .content-wrapper {
+    display: flex;
+    flex: 1; /* Take remaining space */
+    justify-content: center; /* Horizontally center the gallery */
+    align-items: center; /* Vertically center the gallery */
+    padding: 20px; /* Optional padding */
+  }
+  

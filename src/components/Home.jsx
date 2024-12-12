@@ -1,14 +1,21 @@
 import React from "react";
-
+import { useNavigate } from "react-router-dom";
 
 const Home = ({items}) => {
+const navigate = useNavigate();
 
     function onClicker() {
         console.log("yey")
     }
+
+    function handleSignOut(){
+        navigate("/")
+    }
   return (
-    <div>
+    <div className="home-container">
         <header> Welcome</header>
+        <button className="sign-out-btn" onClick={handleSignOut}>Sign Out</button>
+
     <div className="gallery-container">
         {items.map((item, index) => (
         <div onClick={onClicker} className="gallery-item" key={index}>
