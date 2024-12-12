@@ -4,6 +4,7 @@ import AuthPage from './AuthPage';
 import Register from './Register';
 import homeData from "../Data/homeGallery";
 import Home from "./Home";
+import LineGraph from "./CalorieVisual";
 
 function App() {
 
@@ -13,6 +14,7 @@ function App() {
         <Route path="/" element={<AuthPage />} />
         <Route path="/Register" element={<Register />} />
         <Route path="/Home" element={<Home items={homeData} />} />
+        <Route path="/Home/Data" element={<LineGraph />} />
       </Routes>
     </Router>
   );

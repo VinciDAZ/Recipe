@@ -1,12 +1,15 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-const Home = ({items}) => {
+function Home  ({items}) {
 const navigate = useNavigate();
 
     function onClicker() {
-        console.log("yey")
-    }
+
+        
+        navigate("/Home/Data/");
+  };
+    
 
     function handleSignOut(){
         navigate("/")
@@ -18,7 +21,12 @@ const navigate = useNavigate();
 
     <div className="gallery-container">
         {items.map((item, index) => (
-        <div onClick={onClicker} className="gallery-item" key={index}>
+        <div 
+        onClick={onClicker} 
+        className="gallery-item" 
+        key={index}
+        style={{ cursor: "pointer" }}
+        >
           <img src={item.image} alt={item.title} className="gallery-image" />
           <div className="gallery-caption">{item.title}</div>
         </div>))}
