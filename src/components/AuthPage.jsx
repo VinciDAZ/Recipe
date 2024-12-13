@@ -15,6 +15,7 @@ function AuthPage () {
     event.preventDefault();
     if (userInfo.username && userInfo.password) {
       navigate("/home");
+      console.log(userInfo)
     } else {
       alert("Please fill in all fields.");
     }

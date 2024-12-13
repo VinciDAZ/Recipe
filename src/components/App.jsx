@@ -1,10 +1,10 @@
 
 import { BrowserRouter as Router, Route, Routes} from "react-router-dom";
-import AuthPage from './AuthPage';
-import Register from './Register';
-import homeData from "../Data/homeGallery";
-import Home from "./Home";
-import LineGraph from "./CalorieVisual";
+import AuthPage from './AuthPage.jsx';
+import Register from './Register.jsx';
+import homeData from "../Data/homeGallery.jsx";
+import Home from "./Home.jsx";
+import LineGraph from "./CalorieVisual.jsx";
 
 function App() {
 

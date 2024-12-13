@@ -1,6 +1,7 @@
 import React from 'react';
 import AuthPageInput from './AuthPageInput';
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 function Register () {
 
@@ -14,10 +15,24 @@ function Register () {
     email:"",
   })
   
-  const handleSubmit = (event) => {  
+  const handleSubmit = async (event) => {  
     event.preventDefault();
-    if (userInfo.username && userInfo.password) {
-      alert(`Welcome, ${userInfo.username}!`);
+
+    if (userInfo.username && userInfo.password && userInfo.email && userInfo.fName && userInfo.lName) {
+      try {
+        // Post the user information to the server to register the user
+        const response = await axios.post("http://localhost:5000/register", userInfo);
+        
+        // Handle the response from the server (e.g., success or error message)
+        if (response.data.success) {
+          console.log("User successfully registered.");
+          navigate("/");  // Redirect to login page after successful registration
+        } else {
+          console.log("Registration failed:", response.data.message);
+        }
+      } catch (error) {
+        console.error("Error during registration:", error);
+      }
     } else {
       alert("Please fill in all fields.");
     }
@@ -35,8 +50,9 @@ function Register () {
     } )
   }
 
-  const handleSignUp = () => {
-    navigate("/")
+  const handleHaveAccount = () => {
+    navigate("/");
+   
     
   }
        
@@ -95,7 +111,7 @@ function Register () {
               Sign Up
             </button>
 
-            <button onClick ={handleSignUp} type="register" className="register-button">
+            <button onClick ={handleHaveAccount} type="register" className="register-button">
               Already have an account?
               </button>
           </form>
