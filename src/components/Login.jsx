@@ -18,12 +18,9 @@ function Login () {
     if (userInfo.username && userInfo.password) {
       try {
         // Send a POST request to the login endpoint
-        const response = await axios.post("http://localhost:5000/login", {
-          username: userInfo.username,
-          password: userInfo.password,
-        });
+        const response = await axios.post("http://localhost:5000/login", userInfo);
 
-        if (response.status === 200) {
+        if (response.data.success) {
           console.log("Login successful:", response.data);
           // Redirect to the home page
           navigate("/home");

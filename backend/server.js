@@ -50,7 +50,7 @@ app.post("/login", async (req, res) => {
                     
                     // If passwords match, login successful
                     if (isMatch) {
-                        return res.send(`Welcome ${user.username}`);
+                        res.json({ success: true, message: `Welcome ${user.full_name}.` });
                     } else {
                         // If passwords don't match, login failed
                         return res.status(401).send('Invalid username or password');
