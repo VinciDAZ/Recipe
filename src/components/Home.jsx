@@ -7,7 +7,7 @@ const navigate = useNavigate();
     function onClicker() {
 
         
-        navigate("/Home/Data/");
+        navigate("/home/data/");
   };
     
 

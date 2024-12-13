@@ -29,14 +29,51 @@ const db = new pg.Client({
         console.log('Database connected successfully');
     }
   });
-  
 
-// Login Route
+app.post("/login", async (req, res) => {
+    const {username, password} = req.body;
+    console.log(`Received username: ${username}, password: ${password}`);
+    try {
+        // Query the database to retrieve the user's hashed password
+        const result = await db.query(
+            'SELECT * FROM users WHERE username = $1',
+            [username]
+        );
+                // Check if the user exists
+                if (result.rows.length > 0) {
+                    const user = result.rows[0];
+                    console.log(`User found: ${JSON.stringify(user)}`);
+                    
+                    // Compare the provided password with the hashed password stored in the database
+                    const isMatch = await bcrypt.compare(password, user.password);
+                    console.log(`Password match: ${isMatch}`);
+                    
+                    // If passwords match, login successful
+                    if (isMatch) {
+                        return res.send(`Welcome ${user.username}`);
+                    } else {
+                        // If passwords don't match, login failed
+                        return res.status(401).send('Invalid username or password');
+                    }
+                
+            } else {
+                // If no user found with the provided username
+                console.log('No user found with that username');
+                return res.status(401).send('Invalid username or password');
+            }
+        } catch (err) {
+            // If an error occurred during the login process
+            console.error(`Error occurred: ${err.message}`);
+            return res.status(500).send(`Error occurred: ${err.message}`);
+        }
+    });
+
+// Register Route
 app.post("/register", async (req, res) => {
     const { fName, lName, username, password, email } = req.body;
     const full_name = `${fName} ${lName}`;
-    const active = true; // Set a default value for "active" (you may want to change this based on your logic)
-    const start_date = new Date(); // Set the current date as the "start_date"
+    const active = true; 
+    const start_date = new Date(); 
 
   
     try {
@@ -49,9 +86,6 @@ app.post("/register", async (req, res) => {
       INSERT INTO users (first_name, last_name, username, password, email_address, active, start_date, full_name)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `;
-
-
-  
       await db.query(query, values);
   
       res.json({ success: true, message: "User registered successfully." });
@@ -61,30 +95,6 @@ app.post("/register", async (req, res) => {
     }
   });
   
-
-// app.post("/register", async (req, res) => {
-//     const { first_name, last_name, username, password, email_address } = req.body;
-//     const full_name = `${first_name} ${last_name}`;
-//     const active = true; // Default value for "active"
-//     const start_date = new Date(); // Set the current date as the "start_date"
-  
-//     try {
-//       // Hash the password before storing it in the database
-//       const hashedPassword = await bcrypt.hash(password, 10);
-//       const values = [first_name, last_name, username, hashedPassword, email_address, active, start_date, full_name];
-  
-//       const query = `
-//         INSERT INTO users (first_name, last_name, username, password, email_address, active, start_date, full_name)
-//         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-//       `;
-      
-//       await db.query(query, values);
-//       res.json({ success: true, message: "User registered successfully." });
-//     } catch (err) {
-//       console.error("Error during registration:", err);
-//       res.status(500).json({ success: false, message: "An error occurred during registration." });
-//     }
-//   });
   
   // Start Server
   app.listen(port, () => {

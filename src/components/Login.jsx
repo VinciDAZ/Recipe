@@ -1,8 +1,9 @@
 import React from 'react';
 import AuthPageInput from './AuthPageInput';
 import { useNavigate } from "react-router-dom";
+import axios from 'axios';
 
-function AuthPage () {
+function Login () {
 
   const navigate = useNavigate();
 
@@ -11,16 +12,30 @@ function AuthPage () {
     password: "",
   })
   
-  const handleSubmit = (event) => {  
+  const handleSubmit = async (event) => {  
     event.preventDefault();
+
     if (userInfo.username && userInfo.password) {
-      navigate("/home");
-      console.log(userInfo)
+      try {
+        // Send a POST request to the login endpoint
+        const response = await axios.post("http://localhost:5000/login", {
+          username: userInfo.username,
+          password: userInfo.password,
+        });
+
+        if (response.status === 200) {
+          console.log("Login successful:", response.data);
+          // Redirect to the home page
+          navigate("/home");
+        }
+      } catch (error) {
+        console.error("Login error:", error.response?.data || error.message);
+        alert(error.response?.data || "Login failed. Please try again.");
+      }
     } else {
       alert("Please fill in all fields.");
     }
   };
-
   const handleChange = (event) => {
     const {value, name} = event.target;
 
@@ -77,4 +92,4 @@ function AuthPage () {
       ;
     
     
-    export default AuthPage
+    export default Login
