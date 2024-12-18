@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 function Register () {
-
   const navigate = useNavigate();
 
   const [userInfo, setUserInfo] = React.useState({
@@ -52,8 +51,7 @@ function Register () {
 
   const handleHaveAccount = () => {
     navigate("/");
-   
-    
+  
   }
        
       return (

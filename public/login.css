@@ -65,6 +65,9 @@ body, html {
     border-radius: 4px;
     font-size: 16px;
     cursor: pointer;
+    display: block; 
+    margin: 10px 0; 
+    width: 100%; 
 }
 
 .login-button:hover {
@@ -77,3 +80,41 @@ body, html {
         padding: 15px;
     }
 }
+
+.register-button {
+    background-color: #28a745; 
+    color: white; 
+    border: none; 
+    border-radius: 5px; 
+    padding: 10px 20px; 
+    font-size: 1rem; 
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease; 
+    display: block; 
+    margin: 10px 0; 
+    width: 100%; 
+  }
+  
+  .register-button:hover {
+    background-color: #218838; 
+    transform: scale(1.05); 
+  }
+  
+  .register-button:active {
+    background-color: #1e7e34; 
+    transform: scale(0.95); 
+  }
+
+  .forgot-account-link {
+    display: block; 
+    margin-top: 15px; 
+    text-align: center; 
+    color: #007bff; 
+    text-decoration: none; 
+    font-size: 0.9rem; 
+  }
+  
+  .forgot-account-link:hover {
+    text-decoration: underline; 
+    color: #0056b3;
+  }

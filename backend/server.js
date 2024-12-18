@@ -94,6 +94,39 @@ app.post("/register", async (req, res) => {
       res.status(500).json({ success: false, message: "An error occurred during registration." });
     }
   });
+
+  // Password Recovery Endpoint
+app.post("/recover", async (req, res) => {
+  const { email } = req.body;
+  try {
+      // Check if the email exists in the database
+      const result = await db.query("SELECT * FROM users WHERE email_address = $1", [email]);
+      
+      if (result.rows.length === 0) {
+          return res.status(404).json({ success: false, message: "Email not found." });
+      }
+
+      // Generate a reset token (e.g., JWT or random string) and save it with an expiration
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      const resetExpiration = new Date(Date.now() + 60 * 60 * 1000); // 1-hour expiration
+
+      await db.query("UPDATE users SET reset_token = $1, reset_expiration = $2 WHERE email_address = $3", [
+          resetToken,
+          resetExpiration,
+          email,
+      ]);
+
+      // Send reset link via email
+      const resetLink = `http://yourfrontendurl.com/reset-password/${resetToken}`;
+      await sendEmail(email, "Password Recovery", `Click the link to reset your password: ${resetLink}`);
+
+      res.json({ success: true, message: "Password recovery instructions sent to your email." });
+  } catch (err) {
+      console.error("Error during account recovery:", err);
+      res.status(500).json({ success: false, message: "An error occurred during account recovery." });
+  }
+});
+
   
   
   // Start Server

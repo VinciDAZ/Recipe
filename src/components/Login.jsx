@@ -45,9 +45,15 @@ function Login () {
     } )
   }
 
-  const handleRegister = () => {
+  const handleRegister = (event) => {
+    event.preventDefault();
     navigate("/register")
     
+  }
+
+  const handleRecover = (event) => {
+    event.preventDefault();
+    navigate("/recover")
   }
   
   
@@ -83,6 +89,15 @@ function Login () {
                 Create new account
                 </button>
             </form>
+            <div className="forgot-account">
+          <a
+            href="#"
+            onClick={handleRecover}
+            className="forgot-account-link"
+          >
+            Forgot Account?
+          </a>
+        </div>
           </div>
         </div>)
     } 
