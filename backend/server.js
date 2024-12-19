@@ -2,7 +2,9 @@ import express from "express";
 import bodyParser from "body-parser";
 import pg from "pg";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import cors from "cors";
+import nodemailer from "nodemailer";
 
 
 const app = express();
@@ -96,38 +98,76 @@ app.post("/register", async (req, res) => {
   });
 
   // Password Recovery Endpoint
-app.post("/recover", async (req, res) => {
-  const { email } = req.body;
-  try {
+  app.post("/recover", async (req, res) => {
+    const { email } = req.body;
+    
+    try {
       // Check if the email exists in the database
       const result = await db.query("SELECT * FROM users WHERE email_address = $1", [email]);
       
       if (result.rows.length === 0) {
-          return res.status(404).json({ success: false, message: "Email not found." });
+        return res.status(404).json({ success: false, message: "Email not found." });
       }
-
-      // Generate a reset token (e.g., JWT or random string) and save it with an expiration
+  
+      // Generate a reset token and expiration (still needed for validation)
       const resetToken = crypto.randomBytes(32).toString("hex");
       const resetExpiration = new Date(Date.now() + 60 * 60 * 1000); // 1-hour expiration
-
+  
+      // Store the reset token and expiration in the database
       await db.query("UPDATE users SET reset_token = $1, reset_expiration = $2 WHERE email_address = $3", [
-          resetToken,
-          resetExpiration,
-          email,
+        resetToken,
+        resetExpiration,
+        email,
       ]);
-
-      // Send reset link via email
-      const resetLink = `http://yourfrontendurl.com/reset-password/${resetToken}`;
-      await sendEmail(email, "Password Recovery", `Click the link to reset your password: ${resetLink}`);
-
-      res.json({ success: true, message: "Password recovery instructions sent to your email." });
-  } catch (err) {
+  
+      // Return success message and the reset token (optional for frontend)
+      res.json({
+        success: true,
+        message: "Password recovery process started. Please visit the reset page.",
+        resetToken: resetToken, // Add token to the response (for frontend usage)
+      });
+      
+    } catch (err) {
       console.error("Error during account recovery:", err);
       res.status(500).json({ success: false, message: "An error occurred during account recovery." });
+    }
+  });
+
+app.post("/reset", async (req, res) => {
+  const { token, password } = req.body;
+
+  try {
+    // Check if the token exists and is valid
+    const result = await db.query("SELECT * FROM users WHERE reset_token = $1", [token]);
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ success: false, message: "Invalid or expired token." });
+    }
+
+    const user = result.rows[0];
+
+    // Check if the token is expired
+    const now = new Date();
+    if (now > user.reset_expiration) {
+      return res.status(400).json({ success: false, message: "Token has expired." });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update the user's password and clear the reset token/expiration
+    await db.query("UPDATE users SET password = $1, reset_token = NULL, reset_expiration = NULL WHERE reset_token = $2", [
+      hashedPassword,
+      token,
+    ]);
+
+    res.json({ success: true, message: "Password has been reset successfully." });
+
+  } catch (err) {
+    console.error("Error during password reset:", err);
+    res.status(500).json({ success: false, message: "An error occurred during password reset." });
   }
 });
-
-  
   
   // Start Server
   app.listen(port, () => {

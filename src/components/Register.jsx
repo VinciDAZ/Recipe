@@ -38,17 +38,21 @@ function Register () {
   };
 
   const handleChange = (event) => {
-    const {value, name} = event.target;
-
-    setUserInfo(prevValue => {
-        return{
-          ...prevValue,
-            [name] : value
-        };
-      
-    } )
-  }
-
+    const { value, name } = event.target;
+  
+    // Convert the email to lowercase before updating the state
+    if (name === "email") {
+      setUserInfo(prevValue => ({
+        ...prevValue,
+        [name]: value.toLowerCase() // Convert email to lowercase
+      }));
+    } else {
+      setUserInfo(prevValue => ({
+        ...prevValue,
+        [name]: value
+      }));
+    }
+  };
   const handleHaveAccount = () => {
     navigate("/");
   

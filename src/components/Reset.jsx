@@ -1,67 +1,82 @@
 import React from 'react';
-import AuthPageInput from './AuthPageInput';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 
-function Reset () {
+function Reset() {
   const navigate = useNavigate();
-  const [email, setEmail] = React.useState("");
+  const { token } = useParams(); 
+  const [formData, setFormData] = React.useState({
+    password: "",
+    confirmPassword: "",
+  });
   const [message, setMessage] = React.useState(null);
   const [error, setError] = React.useState(null);
 
-  
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
 
-  const handleReset = async (event) => {  
+  const handleReset = async (event) => {
     event.preventDefault();
     setMessage(null);
     setError(null);
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     try {
-      const response = await axios.post("http://localhost:5000/reset", { email });
+      const response = await axios.post("http://localhost:5000/reset", {
+        token, // Include the reset token from the URL
+        password: formData.password,
+      });
+
+      // Handle success response from the server
       setMessage(response.data.message);
-      navigate("/login");
-  } catch (err) {
+      setTimeout(() => navigate("/"), 2000); // Redirect after a delay
+    } catch (err) {
+      // Handle error response
       if (err.response) {
-          // Server responded with a status other than 200 range
-          setError(err.response.data.message);
+        setError(err.response.data.message);
       } else {
-          setError("Something went wrong. Please try again later.");
+        setError("Something went wrong. Please try again later.");
       }
-  }
-};
+    }
+  };
 
-  const handleChange = (event) => {
-    const {value, name} = event.target;
-
-    setEmail(prevValue => {
-        return{
-          ...prevValue,
-            [name] : value
-        };
-      
-    } )
-  }
-
-    return(
-        <div>
-        <h2>Reset Your Password</h2>
-        <form onSubmit={handleReset}>
-            <label htmlFor="password">New Password:</label>
-            <AuthPageInput 
-            onChange = {handleChange}
-            value = {email}
-            type = "email"
-            />
-            <label htmlFor="confirmPassword">Confirm Password:</label>
-            <AuthPageInput 
-            onChange = {handleChange}
-            value = {email}
-            type = "email"
-            />
-            <button type="submit">Reset Password</button>
-        </form>
-        {message && <p style={{ color: "green" }}>{message}</p>}
-        {error && <p style={{ color: "red" }}>{error}</p>}
-    </div>)
+  return (
+    <div className="reset-container">
+      <h2>Reset Your Password</h2>
+      <form onSubmit={handleReset}>
+        <label htmlFor="password">New Password:</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          value={formData.password}
+          onChange={handleChange}
+          required
+        />
+        <label htmlFor="confirmPassword">Confirm Password:</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          name="confirmPassword"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          required
+        />
+        <button type="submit">Reset Password</button>
+      </form>
+      {message && <p style={{ color: "green" }}>{message}</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
+    </div>
+  );
 }
 
-export default Reset
+export default Reset;
