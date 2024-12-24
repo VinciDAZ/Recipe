@@ -11,7 +11,11 @@ function Login () {
     username: "",
     password: "",
   })
-  
+
+  const [foodData, setFoodData] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+
+
   const handleSubmit = async (event) => {  
     event.preventDefault();
 
@@ -56,6 +60,47 @@ function Login () {
     navigate("/recover")
   }
   
+
+  const fetchAndDownload = async () => {
+    try {
+      const response = await axios.get("http://localhost:5000/fetchUSDAData");
+  
+      // Process and filter the response data as needed
+      const filteredData = response.data.map((item) => ({
+        fdcId: item.fdcId,
+        description: item.description,
+        foodCategory: item.foodCategory,
+        servingSize: item.servingSize,
+        commonNames: item.commonNames,
+        foodNutrients: item.foodNutrients.map((nutrient) => ({
+          nutrientId: nutrient.nutrientId,
+          nutrientName: nutrient.nutrientName,
+          nutrientNumber: nutrient.nutrientNumber,
+          unitName: nutrient.unitName,
+          foodNutrientId: nutrient.foodNutrientId,
+          value: nutrient.value,
+        })),
+        finalFoodInputFoods: item.finalFoodInputFoods,
+        foodMeasures: item.foodMeasures
+      }));
+  
+      // Convert the filtered data to a Blob
+      const jsonData = JSON.stringify(filteredData, null, 2);
+      const blob = new Blob([jsonData], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+  
+      // Create a download link
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "USDA_Food_Data.json";
+      link.click();
+  
+      // Clean up the URL object
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error fetching USDA data:", error.message);
+    }
+  };
   
       return (
        <div className="login-container">
@@ -98,7 +143,11 @@ function Login () {
             Forgot Account?
           </a>
         </div>
+      
           </div>
+          <button onClick={fetchAndDownload} style={{ padding: "10px", fontSize: "16px" }}>
+      Fetch USDA Data
+    </button>
         </div>)
     } 
       ;

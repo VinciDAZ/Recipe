@@ -4,7 +4,7 @@ import pg from "pg";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import cors from "cors";
-import nodemailer from "nodemailer";
+import axios from "axios";
 
 
 const app = express();
@@ -31,6 +31,91 @@ const db = new pg.Client({
         console.log('Database connected successfully');
     }
   });
+
+  app.get("/fetchUSDAData", async (req, res) => { 
+    const allData = [];
+    const apiKey = "PB4cNBxOgbfVq1ujW6BHheZNHXWvgzlm2sS93UW6";
+    const baseURL = "https://api.nal.usda.gov/fdc/v1/foods/search";
+    const pageSize = 30000; // Number of items per page
+    let currentPage = 1; // to 50 if page size is 1000
+  
+    const desiredNutrientIds = [1003, 1004, 1005, 1008, 2000, 1079]; // Nutrient numbers to filter
+
+    try {
+        while (true) {
+            const response = await axios.get(baseURL, {
+                params: {
+                    api_key: apiKey,
+                    pageSize,
+                    pageNumber: currentPage,
+                },
+            });
+    
+            const { foods } = response.data;
+            const filteredFoods = foods.map(food => {
+                // Only include foods that have 'raw' in the description and have valid nutrients
+                if (food.description && food.description.toLowerCase().includes("raw") &&
+                    food.foodNutrients.length > 0 && food.finalFoodInputFoods && food.finalFoodInputFoods.length > 0) {
+                    // Filter out the desired nutrients based on their nutrient number
+                    const filteredNutrients = food.foodNutrients.filter(nutrient =>
+                        desiredNutrientIds.includes(nutrient.nutrientId)
+                    );
+    
+                    // Map finalFoodInputFoods to only include specific fields, if not empty array
+                    const finalFoodInputFoods = food.finalFoodInputFoods && food.finalFoodInputFoods.length > 0
+                        ? food.finalFoodInputFoods.map(item => ({
+                            foodDescription: item.foodDescription,
+                            gramWeight: item.gramWeight
+                        }))
+                        : null; // Only include if not empty array
+    
+                    const foodMeasures = food.foodMeasures && food.foodMeasures.length > 0
+                        ? food.foodMeasures.map(item => ({
+                            disseminationText: item.disseminationText,
+                            gramWeight: item.gramWeight
+                        }))
+                        : null; // Only include if not empty array
+    
+                    // Return the necessary fields along with the filtered nutrients and specific foodMeasures/finalFoodInputFoods
+                    return {
+                        fdcId: food.fdcId,
+                        description: food.description,
+                        commonNames: food.commonNames,
+                        servingSize: food.servingSize,
+                        foodCategory: food.foodCategory,
+                        foodNutrients: filteredNutrients.map(nutrient => ({
+                            nutrientId: nutrient.nutrientId,
+                            nutrientName: nutrient.nutrientName,
+                            nutrientNumber: nutrient.nutrientNumber,
+                            unitName: nutrient.unitName,
+                            foodNutrientId: nutrient.foodNutrientId,
+                            value: nutrient.value,
+                        })),
+                        // Include finalFoodInputFoods and foodMeasures only if they are not empty
+                        ...(finalFoodInputFoods && { finalFoodInputFoods }), 
+                        ...(foodMeasures && { foodMeasures }),
+                    };
+                }
+    
+                // If description does not include "raw" or any of the required fields are empty, return null
+                return null; 
+            }).filter(food => food !== null); // Remove null values from the array
+            
+            allData.push(...filteredFoods);
+            
+            if (!response.data.hasMoreResults) break;
+            currentPage++;
+    
+        }
+    
+        // Send the filtered data to the front end as JSON
+        res.json(allData);
+    } catch (error) {
+        console.error("Error fetching USDA data:", error.message);
+        res.status(500).json({ error: "Failed to fetch USDA data." });
+    }
+    
+  })
 
 app.post("/login", async (req, res) => {
     const {username, password} = req.body;
