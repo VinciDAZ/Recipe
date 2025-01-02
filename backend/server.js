@@ -1,6 +1,6 @@
 import express from "express";
 import bodyParser from "body-parser";
-import pg from "pg";
+import pkg from "pg";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import cors from "cors";
@@ -9,113 +9,145 @@ import axios from "axios";
 
 const app = express();
 const port = 5000; 
-
+const {Pool} = pkg
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// PostgreSQL Pool Configuration
-const db = new pg.Client({
+
+// Create a connection pool
+const db = new Pool({
     user: "postgres",
     host: "localhost",
     database: "food_website",
     password: "AlphaOmega1",
     port: 5432,
-  });
+    max: 10, // Maximum number of clients in the pool
+    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+    connectionTimeoutMillis: 2000, // Wait up to 2 seconds for a connection
+});
 
-  //Test connection to Database
-  db.connect((err, client, done) => {
-    if (err) {
-        console.error('Error connecting to the database', err);
-    } else {
+// Test the connection
+db.connect()
+    .then(client => {
         console.log('Database connected successfully');
-    }
-  });
+        client.release(); // Release the client back to the pool
+    })
+    .catch(err => console.error('Error connecting to the database', err));
 
-  app.get("/fetchUSDAData", async (req, res) => { 
-    const allData = [];
+
+
+  app.get("/refreshUSDAData", async (req, res) => {
     const apiKey = "PB4cNBxOgbfVq1ujW6BHheZNHXWvgzlm2sS93UW6";
     const baseURL = "https://api.nal.usda.gov/fdc/v1/foods/search";
-    const pageSize = 30000; // Number of items per page
-    let currentPage = 1; // to 50 if page size is 1000
   
-    const desiredNutrientIds = [1003, 1004, 1005, 1008, 2000, 1079]; // Nutrient numbers to filter
-
+    const excludedDescriptionKeywords = ["toddler", "fried", "salad"];
+    const excludedFoodCategoriesKeywords = [
+      "sandwiches", "cakes and pies", "pudding", "candy", "burgers",
+      "formula", "dishes", "Stir-fry and soy-based sauce mixtures",
+      "turnovers", "burritos and tacos", "fried rice", "lo/chow mein",
+      "dips, gravies, other sauces", "pizza",
+    ];
+    const desiredNutrientIds = [1003, 1004, 1005, 1008, 2000, 1079];
+  
+    let allFoods = [];
+    let currentPage = 1;
+  
     try {
-        while (true) {
-            const response = await axios.get(baseURL, {
-                params: {
-                    api_key: apiKey,
-                    pageSize,
-                    pageNumber: currentPage,
-                },
-            });
-    
-            const { foods } = response.data;
-            const filteredFoods = foods.map(food => {
-                // Only include foods that have 'raw' in the description and have valid nutrients
-                if (food.description && food.description.toLowerCase().includes("raw") &&
-                    food.foodNutrients.length > 0 && food.finalFoodInputFoods && food.finalFoodInputFoods.length > 0) {
-                    // Filter out the desired nutrients based on their nutrient number
-                    const filteredNutrients = food.foodNutrients.filter(nutrient =>
-                        desiredNutrientIds.includes(nutrient.nutrientId)
-                    );
-    
-                    // Map finalFoodInputFoods to only include specific fields, if not empty array
-                    const finalFoodInputFoods = food.finalFoodInputFoods && food.finalFoodInputFoods.length > 0
-                        ? food.finalFoodInputFoods.map(item => ({
-                            foodDescription: item.foodDescription,
-                            gramWeight: item.gramWeight
-                        }))
-                        : null; // Only include if not empty array
-    
-                    const foodMeasures = food.foodMeasures && food.foodMeasures.length > 0
-                        ? food.foodMeasures.map(item => ({
-                            disseminationText: item.disseminationText,
-                            gramWeight: item.gramWeight
-                        }))
-                        : null; // Only include if not empty array
-    
-                    // Return the necessary fields along with the filtered nutrients and specific foodMeasures/finalFoodInputFoods
-                    return {
-                        fdcId: food.fdcId,
-                        description: food.description,
-                        commonNames: food.commonNames,
-                        servingSize: food.servingSize,
-                        foodCategory: food.foodCategory,
-                        foodNutrients: filteredNutrients.map(nutrient => ({
-                            nutrientId: nutrient.nutrientId,
-                            nutrientName: nutrient.nutrientName,
-                            nutrientNumber: nutrient.nutrientNumber,
-                            unitName: nutrient.unitName,
-                            foodNutrientId: nutrient.foodNutrientId,
-                            value: nutrient.value,
-                        })),
-                        // Include finalFoodInputFoods and foodMeasures only if they are not empty
-                        ...(finalFoodInputFoods && { finalFoodInputFoods }), 
-                        ...(foodMeasures && { foodMeasures }),
-                    };
-                }
-    
-                // If description does not include "raw" or any of the required fields are empty, return null
-                return null; 
-            }).filter(food => food !== null); // Remove null values from the array
-            
-            allData.push(...filteredFoods);
-            
-            if (!response.data.hasMoreResults) break;
-            currentPage++;
-    
+      // Loop through all pages to fetch all data
+      while (true) {
+        const response = await axios.get(baseURL, {
+          params: {
+            api_key: apiKey,
+            pageSize: 45000,
+            pageNumber: currentPage,
+          },
+        });
+  
+        const { foods, hasMoreResults } = response.data;
+  
+        const filteredFoods = foods.filter((food) => {
+          const matchesExcludedDescription = food.description &&
+            excludedDescriptionKeywords.some((keyword) =>
+              food.description.toLowerCase().includes(keyword)
+            );
+  
+          const matchesExcludedFoodCategory = food.foodCategory &&
+            excludedFoodCategoriesKeywords.some((keyword) =>
+              food.foodCategory.toLowerCase().includes(keyword)
+            );
+  
+          return !matchesExcludedDescription &&
+            !matchesExcludedFoodCategory &&
+            food.foodNutrients.length > 0 &&
+            food.finalFoodInputFoods &&
+            food.finalFoodInputFoods.length > 0;
+        });
+  
+        allFoods.push(...filteredFoods);
+  
+        // If no more results, break the loop
+        if (!hasMoreResults) break;
+        currentPage++;
+      }
+  
+      // Now, all foods data should be in the allFoods array
+  
+      const client = await db.connect();
+      try {
+        await client.query("BEGIN");
+  
+        // Clear existing data and insert new data
+        await client.query("TRUNCATE TABLE foods RESTART IDENTITY CASCADE");
+        await client.query("TRUNCATE TABLE foodNutrients RESTART IDENTITY CASCADE");
+        await client.query("TRUNCATE TABLE finalFoodInputFoods RESTART IDENTITY CASCADE");
+        await client.query("TRUNCATE TABLE foodMeasures RESTART IDENTITY CASCADE");
+  
+        for (const food of allFoods) {
+          await client.query(
+            "INSERT INTO foods (fdcid, description, food_Category, common_names) VALUES ($1, $2, $3, $4)",
+            [food.fdcId, food.description, food.foodCategory, food.commonNames]
+          );
+  
+          for (const nutrient of food.foodNutrients.filter(n => desiredNutrientIds.includes(n.nutrientId))) {
+            await client.query(
+              "INSERT INTO foodNutrients (fdcid, nutrientId, nutrientname, unitname, unitvalue) VALUES ($1, $2, $3, $4, $5)",
+              [food.fdcId, nutrient.foodNutrientId, nutrient.nutrientName, nutrient.unitName, nutrient.value]
+            );
+          }
+  
+          for (const inputFood of food.finalFoodInputFoods) {
+            await client.query(
+              "INSERT INTO finalFoodInputFoods (fdcId, gramweight, fooddescription) VALUES ($1, $2, $3)",
+              [food.fdcId, inputFood.gramWeight, inputFood.foodDescription]
+            );
+          }
+  
+          if (food.foodMeasures) {
+            for (const measure of food.foodMeasures) {
+              await client.query(
+                "INSERT INTO foodMeasures (fdcId, disseminationtext, gramweight) VALUES ($1, $2, $3)",
+                [food.fdcId, measure.disseminationText, measure.gramWeight]
+              );
+            }
+          }
         }
-    
-        // Send the filtered data to the front end as JSON
-        res.json(allData);
+  
+        await client.query("COMMIT");
+        res.status(200).json({ success: true, message: "Data refreshed successfully" });
+      } catch (error) {
+        await client.query("ROLLBACK");
+        console.error("Error during data insertion:", error.message);
+        res.status(500).json({ success: false, message: "Data insertion failed" });
+      } finally {
+        client.release();
+      }
     } catch (error) {
-        console.error("Error fetching USDA data:", error.message);
-        res.status(500).json({ error: "Failed to fetch USDA data." });
+      console.error("Error fetching USDA data:", error.message);
+      res.status(500).json({ error: "Failed to fetch USDA data." });
     }
-    
-  })
+  });
+  
 
 app.post("/login", async (req, res) => {
     const {username, password} = req.body;

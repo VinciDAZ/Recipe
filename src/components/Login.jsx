@@ -60,6 +60,23 @@ function Login () {
     navigate("/recover")
   }
   
+  const fetchAndInsert = async () => {
+    try {
+      setLoading(true); // Optionally show a loading state
+      const response = await axios.get("http://localhost:5000/refreshUSDAData");
+  
+      if (response.data.success) {
+        alert("USDA data successfully inserted into the database!");
+      } else {
+        alert("Data insertion failed. Please check the backend logs for details.");
+      }
+    } catch (error) {
+      console.error("Error inserting USDA data:", error.message);
+      alert("An error occurred while inserting USDA data. Please try again later.");
+    } finally {
+      setLoading(false); // End loading state
+    }
+  };
 
   const fetchAndDownload = async () => {
     try {
@@ -145,7 +162,7 @@ function Login () {
         </div>
       
           </div>
-          <button onClick={fetchAndDownload} style={{ padding: "10px", fontSize: "16px" }}>
+          <button onClick={fetchAndInsert} style={{ padding: "10px", fontSize: "16px" }}>
       Fetch USDA Data
     </button>
         </div>)
