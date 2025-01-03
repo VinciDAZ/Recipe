@@ -1,16 +1,23 @@
-import React from "react";
+import React, {useState} from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 function Home  ({items}) {
-const navigate = useNavigate();
-
-    function onClicker() {
+    const navigate = useNavigate();
+    const [foodNameList, setFoodNameList] = useState([]);
+    const onClicker =  async () => {
 
         
-        navigate("/home/data/");
-  };
-    
-
+        try {
+          const response = await axios.get("http://localhost:5000/db/foods");
+          setFoodNameList(response.data); // Store the fetched data
+          navigate("/recipes/create", { state: { foodNameList: response.data } }); // Navigate to Gallery with data
+        } catch (error) {
+          console.error("Error fetching food data:", error);
+        }
+      };
+       
+  
     function handleSignOut(){
         navigate("/")
     }

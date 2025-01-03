@@ -5,7 +5,11 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import cors from "cors";
 import axios from "axios";
+import fs from "fs";
 
+const apiToken = fs.readFileSync("../.token");
+
+console.log(apiToken);
 
 const app = express();
 const port = 5000; 
@@ -38,7 +42,7 @@ db.connect()
 
 
   app.get("/refreshUSDAData", async (req, res) => {
-    const apiKey = "PB4cNBxOgbfVq1ujW6BHheZNHXWvgzlm2sS93UW6";
+    const apiKey = apiToken;
     const baseURL = "https://api.nal.usda.gov/fdc/v1/foods/search";
   
     const excludedDescriptionKeywords = ["toddler", "fried", "salad"];
@@ -285,7 +289,19 @@ app.post("/reset", async (req, res) => {
     res.status(500).json({ success: false, message: "An error occurred during password reset." });
   }
 });
-  
+
+// Endpoint to fetch food names and descriptions
+app.get("/db/foods", async (req, res) => {
+  try {
+    const result = await db.query("SELECT fdcid, description, food_category FROM foods");
+    const foodNameList = result.rows; // Fetch rows from the database query
+    res.json(foodNameList);
+  } catch (error) {
+    console.error("Error fetching foods:", error);
+    res.status(500).send("An error occurred while fetching food data.");
+  }
+});
+
   // Start Server
   app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
