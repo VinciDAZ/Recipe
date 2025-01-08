@@ -47,12 +47,15 @@ db.connect()
   
     const excludedDescriptionKeywords = ["toddler", "fried", "salad"];
     const excludedFoodCategoriesKeywords = [
-      "sandwiches", "cakes and pies", "pudding", "candy", "burgers",
-      "formula", "dishes", "Stir-fry and soy-based sauce mixtures",
-      "turnovers", "burritos and tacos", "fried rice", "lo/chow mein",
-      "dips, gravies, other sauces", "pizza",
+      "sandwiches", "cakes and pies", "pudding", "candy", "burgers", "ready-to-eat cereal, higher sugar (>21.2g/100g)",
+      "formula", "dishes", "stir-fry and soy-based sauce mixtures", "nutritional beverages", "rolls and buns", "smoothies and grain drinks",
+      "turnovers", "burritos and tacos", "fried rice", "lo/chow mein", "ramen and Asian broth-based soups", "sport and energy drinks",
+      "dips, gravies, other sauces", "pizza", "egg rolls, dumplings, sushi", "Potato chips", "Tea", "Bagels and English muffins",
+       "milk shakes and other dairy drinks", "doughnuts, sweet rolls, pastries", 'pancakes, waffles, french toast', "vegetables on a sandwich",
+       "pretzels/snack mix", "cookies and brownies", "nutrition bars", "cereal bars", "baby water", "popcorn", "crackers, excludes saltines",
+       "soups, cream-based", "biscuits, muffins, quick breads", "diet sport and energy drinks", "nachos"
     ];
-    const desiredNutrientIds = [1003, 1004, 1005, 1008, 2000, 1079];
+    const desiredNutrientIds = [1003, 1004, 1005, 1008, 2000, 1079, 1093, 1253, 1258, 1292, 1293];
   
     let allFoods = [];
     let currentPage = 1;
@@ -93,6 +96,7 @@ db.connect()
         // If no more results, break the loop
         if (!hasMoreResults) break;
         currentPage++;
+       
       }
   
       // Now, all foods data should be in the allFoods array
@@ -301,6 +305,68 @@ app.get("/db/foods", async (req, res) => {
     res.status(500).send("An error occurred while fetching food data.");
   }
 });
+
+// Route to fetch data for a specific ingredient for dropdown
+app.get('/api/ingredient_dropdown/:fdcid', async (req, res) => {
+  const { fdcid } = req.params;
+
+  try {
+    const query = `
+      SELECT f.fdcid, 
+             f.description,
+             fm.disseminationtext,
+             fm.gramweight
+      FROM foods AS f
+      INNER JOIN foodmeasures AS fm
+      ON f.fdcid = fm.fdcid
+      WHERE f.fdcid = $1 AND fm.disseminationtext != 'Quantity not specified'
+    `;
+    const result = await db.query(query, [fdcid]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Ingredient not found' });
+    }
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching ingredient data:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Route to fetch data for a specific ingredient and calculate conversion rates
+app.get('/api/ingredient_nutrient_conversion/:fdcid', async (req, res) => {
+  const { fdcid } = req.params;
+
+  try {
+    // SQL query to get the required ingredient details, including gramweight and nutrients
+    const query = `
+      SELECT f.fdcid, 
+              f.description,
+             fm.disseminationtext, 
+             fm.gramweight,
+             fn.nutrientname, 
+             fn.unitvalue, 
+             fn.unitname
+      FROM foods AS f
+      INNER JOIN foodmeasures AS fm ON f.fdcid = fm.fdcid 
+      INNER JOIN foodnutrients AS fn ON f.fdcid = fn.fdcid
+      WHERE f.fdcid = $1 AND fm.disseminationtext != 'Quantity not specified'
+    `;
+
+    const result = await db.query(query, [fdcid]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Ingredient not found' });
+    }
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching ingredient data:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 
   // Start Server
   app.listen(port, () => {
