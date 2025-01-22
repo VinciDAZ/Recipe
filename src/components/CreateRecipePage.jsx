@@ -5,13 +5,16 @@ const CreateRecipePage = () => {
   const location = useLocation();
   const { foodNameList } = location.state;
   const [searchKey, setSearchKey] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [ingredientsList, setIngredientsList] = useState([]);
   const [memoryTable, setMemoryTable] = useState([]);
 
   const filteredFoods = foodNameList.filter((food) =>
     food.description.toLowerCase().includes(searchKey.toLowerCase())
   );
-
+  
+  const toggleSearch = () => {
+    setIsSearchExpanded((prev) => !prev)};
   const handleAddIngredient = (food) => {
     const foodExists = ingredientsList.some((ingredient) => ingredient.fdcid === food.fdcid);
 
@@ -171,16 +174,56 @@ const CreateRecipePage = () => {
   
   
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-      <div style={{ width: '50%', padding: '20px', overflowY: 'auto' }}>
+    <div style={{ display: 'flex', height: '100vh', position: 'relative' }}>
+    {/* Search Button */}
+    <button
+      onClick={toggleSearch}
+      style={{
+        position: 'fixed',
+        top: '10px',
+        left: '10px',
+        padding: '10px 20px',
+        backgroundColor: '#4a90e2',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        zIndex: 1000,
+      }}
+    >
+      {isSearchExpanded ? 'Close Search' : '🔍 Search Foods'}
+    </button>
+
+    {/* Search Panel */}
+    {isSearchExpanded && (
+      <div
+        style={{
+          position: 'fixed',
+          top: '50px', // Adjust to be just below the button
+          left: '10px',
+          width: 'calc(100% - 20px)', // Same width as the button
+          maxWidth: '300px', // Restrict maximum width
+          backgroundColor: '#fff',
+          padding: '10px',
+          borderRadius: '5px',
+          boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)',
+          zIndex: 999,
+          boxSizing: 'border-box',
+        }}
+      >
         <input
           type="text"
           placeholder="Search foods..."
           value={searchKey}
           onChange={(event) => setSearchKey(event.target.value)}
-          style={{ padding: '10px', width: '100%', fontSize: '16px', marginBottom: '20px' }}
+          style={{
+            padding: '10px',
+            width: '100%',
+            fontSize: '16px',
+            boxSizing: 'border-box',
+            marginBottom: '10px',
+          }}
         />
-
         {searchKey && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {filteredFoods.map((food) => (
@@ -188,113 +231,118 @@ const CreateRecipePage = () => {
                 key={food.fdcid}
                 onClick={() => handleAddIngredient(food)}
                 style={{
-                  padding: '20px',
-                  width: '100%',
+                  padding: '10px',
                   backgroundColor: '#4a90e2',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '10px',
-                  textAlign: 'center',
+                  borderRadius: '5px',
                   cursor: 'pointer',
                 }}
               >
-                <h4>{food.name}</h4>
-                <p style={{ fontSize: '14px' }}>{food.description}</p>
+                {food.description}
               </button>
             ))}
           </div>
         )}
       </div>
+    )}
 
-      <div style={{ width: '50%', padding: '20px', backgroundColor: '#fff', overflowY: 'auto' }}>
-        <h2>Selected Ingredients</h2>
-        {ingredientsList.map((ingredient) => {
-          const memoryEntry = memoryTable.find((entry) => entry.fdcid === ingredient.fdcid);
-          const disseminationOptions = memoryEntry?.data?.map((row) => row.disseminationtext) || [];
+    {/* Selected Ingredients Panel */}
+    <div
+      style={{
+        flex: 1,
+        padding: '20px',
+        overflowY: 'auto',
+        marginLeft: isSearchExpanded ? '320px' : '10px', // Dynamically adjust margin
+        transition: 'margin-left 0.3s ease',
+      }}
+    >
+      <h2>Selected Ingredients</h2>
+      {ingredientsList.map((ingredient) => {
+        const memoryEntry = memoryTable.find((entry) => entry.fdcid === ingredient.fdcid);
+        const disseminationOptions = memoryEntry?.data?.map((row) => row.disseminationtext) || [];
 
-          return (
-            <div
-              key={ingredient.fdcid}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-                backgroundColor: '#f4f4f4',
-                padding: '10px',
-                borderRadius: '5px',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong>{ingredient.name}</strong>
-                <button
-                  onClick={() => handleRemoveIngredient(ingredient.fdcid)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    color: '#e74c3c',
-                    cursor: 'pointer',
-                  }}
-                >
-                  🗑️
-                </button>
-              </div>
-              <p>{ingredient.description}</p>
-
-              <select
-                value={ingredient.measurementType}  // This references the current measurementType
-                onChange={(e) => handleMeasurementChange(ingredient.fdcid, e.target.value)}  // This will update the state when a new option is selected
-                style={{ padding: '5px' }}
+        return (
+          <div
+            key={ingredient.fdcid}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              backgroundColor: '#f4f4f4',
+              padding: '10px',
+              borderRadius: '5px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong>{ingredient.name}</strong>
+              <button
+                onClick={() => handleRemoveIngredient(ingredient.fdcid)}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#e74c3c',
+                  cursor: 'pointer',
+                }}
               >
-                <option value="">Select measurement</option>
-                {disseminationOptions.map((option, idx) => (
-                  <option key={idx} value={option}>
-                    {option}
-                 </option>
-                ))}
-               <option value="manual">Enter manual grams</option>  {/* Manual grams option */}
-              </select>
-
-              {ingredient.measurementType === 'manual' ? (
+                🗑️
+              </button>
+            </div>
+            <p>{ingredient.description}</p>
+            <select
+              value={ingredient.measurementType}
+              onChange={(e) => handleMeasurementChange(ingredient.fdcid, e.target.value)}
+              style={{ padding: '5px' }}
+            >
+              <option value="">Select measurement</option>
+              {disseminationOptions.map((option, idx) => (
+                <option key={idx} value={option}>
+                  {option}
+                </option>
+              ))}
+              <option value="manual">Enter manual grams</option>
+            </select>
+            {ingredient.measurementType === 'manual' ? (
+              <input
+                type="text"
+                placeholder="Enter amount in grams"
+                value={ingredient.grams}
+                onChange={(e) => handleGramsChange(ingredient.fdcid, e.target.value)}
+                style={{ padding: '5px', width: '100%' }}
+              />
+            ) : ingredient.measurementType ? (
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <span>How many "{ingredient.measurementType}"?</span>
                 <input
                   type="text"
-                  placeholder="Enter amount in grams"
+                  placeholder={`Enter quantity for ${ingredient.measurementType}`}
                   value={ingredient.grams}
                   onChange={(e) => handleGramsChange(ingredient.fdcid, e.target.value)}
                   style={{ padding: '5px', width: '100%' }}
                 />
-              ) : ingredient.measurementType ? (
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <span>How many "{ingredient.measurementType}"?</span>
-                  <input
-                    type="text"
-                    placeholder={`Enter quantity for ${ingredient.measurementType}`}
-                    value={ingredient.grams}
-                    onChange={(e) => handleGramsChange(ingredient.fdcid, e.target.value)}
-                    style={{ padding: '5px', width: '100%' }}
-                  />
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-        <button
-          onClick={handleDownloadIngredientData}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            marginTop: '10px',
-          }}
-        >
-          Download Ingredient Conversion Data (JSON)
-        </button>
-
-      </div>
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+      <button
+        onClick={handleDownloadIngredientData}
+        style={{
+          padding: '10px 20px',
+          backgroundColor: '#007bff',
+          color: 'white',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: 'pointer',
+          marginTop: '10px',
+        }}
+      >
+        Download Ingredient Conversion Data (JSON)
+      </button>
     </div>
+  </div>
   );
+  
 };
 
 export default CreateRecipePage;
