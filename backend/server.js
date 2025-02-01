@@ -41,120 +41,80 @@ db.connect()
 
 
 
-  app.get("/refreshUSDAData", async (req, res) => {
-    const apiKey = apiToken;
-    const baseURL = "https://api.nal.usda.gov/fdc/v1/foods/search";
-  
-    const excludedDescriptionKeywords = ["toddler", "fried", "salad"];
-    const excludedFoodCategoriesKeywords = [
-      "sandwiches", "cakes and pies", "pudding", "candy", "burgers", "ready-to-eat cereal, higher sugar (>21.2g/100g)",
-      "formula", "dishes", "stir-fry and soy-based sauce mixtures", "nutritional beverages", "rolls and buns", "smoothies and grain drinks",
-      "turnovers", "burritos and tacos", "fried rice", "lo/chow mein", "ramen and Asian broth-based soups", "sport and energy drinks",
-      "dips, gravies, other sauces", "pizza", "egg rolls, dumplings, sushi", "Potato chips", "Tea", "Bagels and English muffins",
-       "milk shakes and other dairy drinks", "doughnuts, sweet rolls, pastries", 'pancakes, waffles, french toast', "vegetables on a sandwich",
-       "pretzels/snack mix", "cookies and brownies", "nutrition bars", "cereal bars", "baby water", "popcorn", "crackers, excludes saltines",
-       "soups, cream-based", "biscuits, muffins, quick breads", "diet sport and energy drinks", "nachos"
-    ];
-    const desiredNutrientIds = [1003, 1004, 1005, 1008, 2000, 1079, 1093, 1253, 1258, 1292, 1293];
-  
-    let allFoods = [];
-    let currentPage = 1;
-  
-    try {
-      // Loop through all pages to fetch all data
-      while (true) {
-        const response = await axios.get(baseURL, {
-          params: {
-            api_key: apiKey,
-            pageSize: 45000,
-            pageNumber: currentPage,
-          },
-        });
-  
-        const { foods, hasMoreResults } = response.data;
-  
-        const filteredFoods = foods.filter((food) => {
-          const matchesExcludedDescription = food.description &&
-            excludedDescriptionKeywords.some((keyword) =>
-              food.description.toLowerCase().includes(keyword)
-            );
-  
-          const matchesExcludedFoodCategory = food.foodCategory &&
-            excludedFoodCategoriesKeywords.some((keyword) =>
-              food.foodCategory.toLowerCase().includes(keyword)
-            );
-  
-          return !matchesExcludedDescription &&
-            !matchesExcludedFoodCategory &&
-            food.foodNutrients.length > 0 &&
-            food.finalFoodInputFoods &&
-            food.finalFoodInputFoods.length > 0;
-        });
-  
-        allFoods.push(...filteredFoods);
-  
-        // If no more results, break the loop
-        if (!hasMoreResults) break;
-        currentPage++;
-       
-      }
-  
-      // Now, all foods data should be in the allFoods array
-  
-      const client = await db.connect();
+    app.get("/refreshUSDAData", async (req, res) => {
+      const apiKey = apiToken;
+      const baseURL = "https://api.nal.usda.gov/fdc/v1/foods/search";
+      const desiredNutrientIds = [1003, 1004, 1005, 1008, 1079, 1093, 1253, 1258, 1292, 1293, 2048, 1063];
+    
+      let allFoods = [];
+      let currentPage = 1;
+    
       try {
-        await client.query("BEGIN");
-  
-        // Clear existing data and insert new data
-        await client.query("TRUNCATE TABLE foods RESTART IDENTITY CASCADE");
-        await client.query("TRUNCATE TABLE foodNutrients RESTART IDENTITY CASCADE");
-        await client.query("TRUNCATE TABLE finalFoodInputFoods RESTART IDENTITY CASCADE");
-        await client.query("TRUNCATE TABLE foodMeasures RESTART IDENTITY CASCADE");
-  
-        for (const food of allFoods) {
-          await client.query(
-            "INSERT INTO foods (fdcid, description, food_Category, common_names) VALUES ($1, $2, $3, $4)",
-            [food.fdcId, food.description, food.foodCategory, food.commonNames]
+        // Loop through all pages to fetch all data
+        while (true) {
+          const response = await axios.get(baseURL, {
+            params: {
+              api_key: apiKey,
+              pageSize: 45000,
+              pageNumber: currentPage,
+              dataType: 'Foundation'
+            },
+          });
+    
+          const { foods, hasMoreResults } = response.data;
+          console.log(`Fetched ${foods.length} items from USDA API.`);
+    
+          // Filter out foods with missing essential data
+          const filteredFoods = foods.filter(food =>
+            food.foodNutrients.length > 0
           );
-  
-          for (const nutrient of food.foodNutrients.filter(n => desiredNutrientIds.includes(n.nutrientId))) {
+    
+          allFoods.push(...filteredFoods);
+    
+          // If no more results, break the loop
+          if (!hasMoreResults) break;
+          currentPage++;
+        }
+    
+        // Now, all foods data should be in the allFoods array
+        const client = await db.connect();
+        try {
+          await client.query("BEGIN");
+    
+          // Clear existing data and insert new data
+          await client.query("TRUNCATE TABLE foods RESTART IDENTITY CASCADE");
+          await client.query("TRUNCATE TABLE foodNutrients RESTART IDENTITY CASCADE");
+   
+    
+          for (const food of allFoods) {
             await client.query(
-              "INSERT INTO foodNutrients (fdcid, nutrientId, nutrientname, unitname, unitvalue) VALUES ($1, $2, $3, $4, $5)",
-              [food.fdcId, nutrient.foodNutrientId, nutrient.nutrientName, nutrient.unitName, nutrient.value]
+              "INSERT INTO foods (fdcid, description, food_Category) VALUES ($1, $2, $3)",
+              [food.fdcId, food.description, food.foodCategory]
             );
-          }
-  
-          for (const inputFood of food.finalFoodInputFoods) {
-            await client.query(
-              "INSERT INTO finalFoodInputFoods (fdcId, gramweight, fooddescription) VALUES ($1, $2, $3)",
-              [food.fdcId, inputFood.gramWeight, inputFood.foodDescription]
-            );
-          }
-  
-          if (food.foodMeasures) {
-            for (const measure of food.foodMeasures) {
+    
+            for (const nutrient of food.foodNutrients.filter(n => desiredNutrientIds.includes(n.nutrientId))) {
               await client.query(
-                "INSERT INTO foodMeasures (fdcId, disseminationtext, gramweight) VALUES ($1, $2, $3)",
-                [food.fdcId, measure.disseminationText, measure.gramWeight]
+                "INSERT INTO foodNutrients (fdcid, foodnutrientId, nutrientId, nutrientname, unitname, unitvalue) VALUES ($1, $2, $3, $4, $5, $6)",
+                [food.fdcId, nutrient.foodNutrientId, nutrient.nutrientId, nutrient.nutrientName, nutrient.unitName, nutrient.value]
               );
             }
           }
+    
+          await client.query("COMMIT");
+          res.status(200).json({ success: true, message: "Data refreshed successfully" });
+        } catch (error) {
+          await client.query("ROLLBACK");
+          console.error("Error during data insertion:", error.message);
+          res.status(500).json({ success: false, message: "Data insertion failed" });
+        } finally {
+          client.release();
         }
-  
-        await client.query("COMMIT");
-        res.status(200).json({ success: true, message: "Data refreshed successfully" });
       } catch (error) {
-        await client.query("ROLLBACK");
-        console.error("Error during data insertion:", error.message);
-        res.status(500).json({ success: false, message: "Data insertion failed" });
-      } finally {
-        client.release();
+        console.error("Error fetching USDA data:", error.message);
+        res.status(500).json({ error: "Failed to fetch USDA data." });
       }
-    } catch (error) {
-      console.error("Error fetching USDA data:", error.message);
-      res.status(500).json({ error: "Failed to fetch USDA data." });
-    }
-  });
+    });
+    
   
 
 app.post("/login", async (req, res) => {
@@ -294,10 +254,14 @@ app.post("/reset", async (req, res) => {
   }
 });
 
-// Endpoint to fetch food names and descriptions
+// Endpoint to fetch food category and descriptions
 app.get("/db/foods", async (req, res) => {
   try {
-    const result = await db.query("SELECT fdcid, description, food_category FROM foods");
+    const result = await db.query(`SELECT 
+      fdcid,
+       description, 
+       food_category 
+       FROM foods`);
     const foodNameList = result.rows; // Fetch rows from the database query
     res.json(foodNameList);
   } catch (error) {
@@ -306,36 +270,9 @@ app.get("/db/foods", async (req, res) => {
   }
 });
 
-// Route to fetch data for a specific ingredient for dropdown
-app.get('/api/ingredient_dropdown/:fdcid', async (req, res) => {
-  const { fdcid } = req.params;
-
-  try {
-    const query = `
-      SELECT f.fdcid, 
-             f.description,
-             fm.disseminationtext,
-             fm.gramweight
-      FROM foods AS f
-      INNER JOIN foodmeasures AS fm
-      ON f.fdcid = fm.fdcid
-      WHERE f.fdcid = $1 AND fm.disseminationtext != 'Quantity not specified'
-    `;
-    const result = await db.query(query, [fdcid]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Ingredient not found' });
-    }
-
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching ingredient data:', err);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
 
 // Route to fetch data for a specific ingredient and calculate conversion rates
-app.get('/api/ingredient_nutrient_conversion/:fdcid', async (req, res) => {
+app.get("/api/ingredient_nutrient_conversion/:fdcid", async (req, res) => {
   const { fdcid } = req.params;
 
   try {
@@ -343,15 +280,13 @@ app.get('/api/ingredient_nutrient_conversion/:fdcid', async (req, res) => {
     const query = `
       SELECT f.fdcid, 
               f.description,
-             fm.disseminationtext, 
-             fm.gramweight,
-             fn.nutrientname, 
+             fn.nutrientname,
+             fn.nutrientid, 
              fn.unitvalue, 
              fn.unitname
       FROM foods AS f
-      INNER JOIN foodmeasures AS fm ON f.fdcid = fm.fdcid 
       INNER JOIN foodnutrients AS fn ON f.fdcid = fn.fdcid
-      WHERE f.fdcid = $1 AND fm.disseminationtext != 'Quantity not specified'
+      WHERE f.fdcid = $1
     `;
 
     const result = await db.query(query, [fdcid]);
@@ -361,6 +296,7 @@ app.get('/api/ingredient_nutrient_conversion/:fdcid', async (req, res) => {
     }
 
     res.json(result.rows);
+    console.log(result)
   } catch (err) {
     console.error('Error fetching ingredient data:', err);
     res.status(500).json({ error: 'Internal Server Error' });

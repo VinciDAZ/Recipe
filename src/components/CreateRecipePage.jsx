@@ -1,346 +1,263 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import FoodCategory from './FoodCategory';
+import SearchFoods from './SearchFoods';
+import SelectedIngredients from './SelectedIngredients';
 
 const CreateRecipePage = () => {
   const location = useLocation();
   const { foodNameList } = location.state;
-  const [searchKey, setSearchKey] = useState('');
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [ingredientsList, setIngredientsList] = useState([]);
   const [memoryTable, setMemoryTable] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
 
-  const filteredFoods = foodNameList.filter((food) =>
-    food.description.toLowerCase().includes(searchKey.toLowerCase())
-  );
-  
-  const toggleSearch = () => {
-    setIsSearchExpanded((prev) => !prev)};
-  const handleAddIngredient = (food) => {
+
+  const toggleSidebar = () => setIsSidebarVisible((prev) => !prev);
+  // Extract unique food categories
+  const foodCategories = [...new Set(foodNameList.map((food) => food.food_category))];
+
+  const handleAddIngredient = async (food) => {
     const foodExists = ingredientsList.some((ingredient) => ingredient.fdcid === food.fdcid);
-
+  
     if (!foodExists) {
+      // Add ingredient to the list
       setIngredientsList((prevList) => [
         ...prevList,
-        { fdcid: food.fdcid, name: food.name, description: food.description, measurementType: '', grams: 0 },
+        { fdcid: food.fdcid, description: food.description, grams: '', nutrients: [] },
       ]);
+  
+      try {
+        // Fetch nutrient data for the newly added ingredient
+        const response = await fetch(`http://localhost:5000/api/ingredient_nutrient_conversion/${food.fdcid}`);
+        if (!response.ok) {
+          console.error(`Failed to fetch data for fdcid ${food.fdcid}, Status: ${response.status}`);
+          return;
+        }
+  
+        const conversionData = await response.json();
+  
+        // Update memoryTable with fetched nutrient data
+        setMemoryTable((prevTable) => [
+          ...prevTable,
+          {
+            fdcid: food.fdcid,
+            description: food.description,
+            data: conversionData.map((item) => ({
+              nutrientName: item.nutrientname,
+              nutrientid: item.nutrientid,
+              unitValue: item.unitvalue,
+              unitName: item.unitname,
+            })),
+          },
+        ]);
+      } catch (err) {
+        console.error("Error fetching conversion data:", err);
+      }
     } else {
-      alert(`${food.name} is already added.`);
+      alert(`${food.description} is already added.`);
     }
   };
+  
 
   const handleRemoveIngredient = (fdcid) => {
     setIngredientsList((prevList) => prevList.filter((item) => item.fdcid !== fdcid));
+    setMemoryTable((prevTable) => prevTable.filter((entry) => entry.fdcid !== fdcid)); // Remove from memoryTable
   };
 
-  useEffect(() => {
-    const fetchIngredientData = async () => {
-      const memoryDataDropdown = await Promise.all(
-        ingredientsList.map(async (ingredient) => {
-          try {
-            const response = await fetch(`http://localhost:5000/api/ingredient_dropdown/${ingredient.fdcid}`);
-            const data = await response.json();
-            return { fdcid: ingredient.fdcid, data };
-          } catch (error) {
-            console.error(`Error fetching data for fdcid ${ingredient.fdcid}:`, error);
-            return { fdcid: ingredient.fdcid, data: null };
-          }
-        })
-      );
-
-      setMemoryTable(memoryDataDropdown);
-    };
-
-    fetchIngredientData();
-  }, [ingredientsList]);
-
-  const handleMeasurementChange = (fdcid, selectedOption) => {
-    setIngredientsList((prevList) =>
-      prevList.map((ingredient) =>
-        ingredient.fdcid === fdcid
-          ? {
-              ...ingredient,
-              measurementType: selectedOption,
-              grams: selectedOption === 'manual' ? 0 : ingredient.grams,
-            }
-          : ingredient
-      )
-    );
-
-    setMemoryTable((prevMemory) =>
-      prevMemory.map((entry) =>
-        entry.fdcid === fdcid
-          ? {
-              ...entry,
-              data: entry.data.filter((row) => row.disseminationtext === selectedOption),
-            }
-          : entry
-      )
-    );
-  };
-
-  const handleGramsChange = (fdcid, value) => {
-    if (!isNaN(value) && value > 0) {
+  const handleGramsChange = async (fdcid, value) => {
+    if (isNaN(value) || value < 0) {
+      return; // Ignore invalid or negative input
+    }
+  
+    try {
+      // Fetch conversion data for the given fdcid
+      const response = await fetch(`http://localhost:5000/api/ingredient_nutrient_conversion/${fdcid}`);
+      if (!response.ok) {
+        console.error(`Failed to fetch data for fdcid ${fdcid}`);
+        return;
+      }
+  
+      const conversionData = await response.json();
+      
+      // Calculate the conversion rate based on the entered grams
+      const conversionRate = value / 100;
+  
+      // Update the ingredients list
       setIngredientsList((prevList) =>
         prevList.map((ingredient) => {
           if (ingredient.fdcid === fdcid) {
-            const memoryEntry = memoryTable.find((entry) => entry.fdcid === fdcid);
-            const selectedConversion = memoryEntry?.data?.find(
-              (row) => row.disseminationtext === ingredient.measurementType
-            );
+            // Multiply each nutrient's unitvalue by the conversion rate
+            const updatedNutrients = conversionData.map((item) => ({
+              nutrientName: item.nutrientname,
+              unitValue: item.unitvalue * conversionRate, // Apply conversion rate
+              unitName: item.unitname,
+              nutrientId: item.nutrientid,
+            }));
   
-            let conversionRate = 0;
-            let updatedNutrients = [];
-  
-            // If the measurement type is 'manual', calculate the conversion rate based on grams entered
-            if (ingredient.measurementType === 'Enter manual grams') {
-              conversionRate = value / 100; // Manual grams conversion
-            } else {
-              // Otherwise, use the selected conversion from the dropdown
-              conversionRate = selectedConversion?.gramweight / 100;
-            }
-  
-            // Calculate updated nutrients based on the conversion rate
-            if (selectedConversion) {
-              updatedNutrients = selectedConversion.nutrients.map((row) => ({
-                ...row,
-                nutrient_value: row.nutrient_value * conversionRate,
-              }));
-            }
-  
-            // Return updated ingredient with new grams and nutrients
             return { ...ingredient, grams: value, nutrients: updatedNutrients };
           }
           return ingredient;
         })
       );
-    }
-  };
   
-  
-
-  const handleDownloadIngredientData = async () => {
-    try {
-      const formattedData = await Promise.all(ingredientsList.map(async (ingredient) => {
-        const memoryEntry = memoryTable.find((entry) => entry.fdcid === ingredient.fdcid);
-        const selectedOption = memoryEntry?.data.find(
-          (row) => row.disseminationtext === ingredient.measurementType
-        );
-  
-        let conversionRate = null;
-        let nutrients = {};
-  
-        if (selectedOption && ingredient.grams > 0) {
-          // Fetch the ingredient's nutrient data from the backend
-          const response = await fetch(`http://localhost:5000/api/ingredient_nutrient_conversion/${ingredient.fdcid}`);
-          const nutrientData = await response.json();
-  
-          // Calculate the conversion rate
-          conversionRate = (selectedOption.gramweight * ingredient.grams) / 100;
-  
-          // Multiply conversionRate with each nutrient's unitvalue
-          nutrients = nutrientData.reduce((acc, nutrient) => {
-            // Adjusting the nutrient value based on conversion rate
-            const adjustedValue = (nutrient.unitvalue * conversionRate).toFixed(2);
-            acc[nutrient.nutrientname] = adjustedValue;
-            return acc;
-          }, {});
-        }
-  
-        return {
-          fdcid: ingredient.fdcid,
-          name: ingredient.name,
-          measurementType: ingredient.measurementType,
-          disseminationText: selectedOption ? selectedOption.disseminationtext : null,
-          gramWeight: selectedOption ? selectedOption.gramweight : null,
-          conversionRate,
-          nutrients,
+      // Update the memoryTable to include grams
+      setMemoryTable((prevTable) => {
+        const existingEntryIndex = prevTable.findIndex((entry) => entry.fdcid === fdcid);
+        const updatedEntry = {
+          fdcid,
+          description: conversionData[0]?.description || "Unknown",
+          grams: value,  // Include grams here
+          data: conversionData.map((item) => ({
+            nutrientName: item.nutrientname,
+            unitValue: item.unitvalue * conversionRate, // Apply conversion rate
+            unitName: item.unitname,
+            nutrientId: item.nutrientid,
+          })),
         };
-      }));
   
-      const jsonData = JSON.stringify(formattedData, null, 2);
-  
-      // Trigger the file download
-      const blob = new Blob([jsonData], { type: 'application/json;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'ingredient_conversion_data.json';
-      link.click();
-    } catch (error) {
-      console.error('Error downloading ingredient data:', error);
+        if (existingEntryIndex > -1) {
+          // Update the existing entry
+          return prevTable.map((entry, index) =>
+            index === existingEntryIndex ? updatedEntry : entry
+          );
+        } else {
+          // Add a new entry to the memoryTable
+          return [...prevTable, updatedEntry];
+        }
+      });
+    } catch (err) {
+      console.error("Error fetching conversion data:", err);
     }
   };
   
   
-  
+  useEffect(() => {
+    console.log("Updated Memory Table:", memoryTable);
+  }, [memoryTable]);
   
   return (
     <div style={{ display: 'flex', height: '100vh', position: 'relative' }}>
-    {/* Search Button */}
-    <button
-      onClick={toggleSearch}
-      style={{
-        position: 'fixed',
-        top: '10px',
-        left: '10px',
-        padding: '10px 20px',
-        backgroundColor: '#4a90e2',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        zIndex: 1000,
-      }}
-    >
-      {isSearchExpanded ? 'Close Search' : '🔍 Search Foods'}
-    </button>
-
-    {/* Search Panel */}
-    {isSearchExpanded && (
-      <div
-        style={{
-          position: 'fixed',
-          top: '50px', // Adjust to be just below the button
-          left: '10px',
-          width: 'calc(100% - 20px)', // Same width as the button
-          maxWidth: '300px', // Restrict maximum width
-          backgroundColor: '#fff',
-          padding: '10px',
-          borderRadius: '5px',
-          boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)',
-          zIndex: 999,
-          boxSizing: 'border-box',
-        }}
-      >
-        <input
-          type="text"
-          placeholder="Search foods..."
-          value={searchKey}
-          onChange={(event) => setSearchKey(event.target.value)}
-          style={{
-            padding: '10px',
-            width: '100%',
-            fontSize: '16px',
-            boxSizing: 'border-box',
-            marginBottom: '10px',
-          }}
-        />
-        {searchKey && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {filteredFoods.map((food) => (
-              <button
-                key={food.fdcid}
-                onClick={() => handleAddIngredient(food)}
-                style={{
-                  padding: '10px',
-                  backgroundColor: '#4a90e2',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                }}
-              >
-                {food.description}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    )}
-
-    {/* Selected Ingredients Panel */}
-    <div
-      style={{
-        flex: 1,
-        padding: '20px',
-        overflowY: 'auto',
-        marginLeft: isSearchExpanded ? '320px' : '10px', // Dynamically adjust margin
-        transition: 'margin-left 0.3s ease',
-      }}
-    >
-      <h2>Selected Ingredients</h2>
-      {ingredientsList.map((ingredient) => {
-        const memoryEntry = memoryTable.find((entry) => entry.fdcid === ingredient.fdcid);
-        const disseminationOptions = memoryEntry?.data?.map((row) => row.disseminationtext) || [];
-
-        return (
-          <div
-            key={ingredient.fdcid}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-              backgroundColor: '#f4f4f4',
-              padding: '10px',
-              borderRadius: '5px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong>{ingredient.name}</strong>
-              <button
-                onClick={() => handleRemoveIngredient(ingredient.fdcid)}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: '#e74c3c',
-                  cursor: 'pointer',
-                }}
-              >
-                🗑️
-              </button>
-            </div>
-            <p>{ingredient.description}</p>
-            <select
-              value={ingredient.measurementType}
-              onChange={(e) => handleMeasurementChange(ingredient.fdcid, e.target.value)}
-              style={{ padding: '5px' }}
-            >
-              <option value="">Select measurement</option>
-              {disseminationOptions.map((option, idx) => (
-                <option key={idx} value={option}>
-                  {option}
-                </option>
-              ))}
-              <option value="manual">Enter manual grams</option>
-            </select>
-            {ingredient.measurementType === 'manual' ? (
-              <input
-                type="text"
-                placeholder="Enter amount in grams"
-                value={ingredient.grams}
-                onChange={(e) => handleGramsChange(ingredient.fdcid, e.target.value)}
-                style={{ padding: '5px', width: '100%' }}
-              />
-            ) : ingredient.measurementType ? (
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <span>How many "{ingredient.measurementType}"?</span>
-                <input
-                  type="text"
-                  placeholder={`Enter quantity for ${ingredient.measurementType}`}
-                  value={ingredient.grams}
-                  onChange={(e) => handleGramsChange(ingredient.fdcid, e.target.value)}
-                  style={{ padding: '5px', width: '100%' }}
-                />
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
+      {/* Toggle Button Above Sidebar */}
       <button
-        onClick={handleDownloadIngredientData}
+        onClick={toggleSidebar}
         style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          zIndex: 1000,
           padding: '10px 20px',
-          backgroundColor: '#007bff',
+          backgroundColor: '#4a90e2',
           color: 'white',
           border: 'none',
           borderRadius: '5px',
           cursor: 'pointer',
-          marginTop: '10px',
         }}
       >
-        Download Ingredient Conversion Data (JSON)
+        {isSidebarVisible ? 'Close Sidebar' : 'Open Sidebar'}
       </button>
+
+      {/* Sidebar */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '20px',
+          padding: '20px',
+          width: isSidebarVisible ? '100%' : '0',
+          maxWidth: '600px',
+          height: '100%',
+          boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)',
+          position: 'absolute',
+          top: '50px', // Pushes the sidebar below the toggle button
+          left: isSidebarVisible ? '0px' : '-320px', // Hide sidebar when toggled
+          transition: 'left 0.3s ease-in-out',
+          backgroundColor: '#fff',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'row', gap: '10px' }}>
+          {/* Food Categories Component */}
+          <FoodCategory
+            categories={foodCategories}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+          />
+
+          {/* Search Foods Component */}
+          <SearchFoods
+            foods={foodNameList}
+            onAddIngredient={handleAddIngredient}
+            selectedCategory={selectedCategory}
+          />
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div
+        style={{
+          flex: 1,
+          paddingTop: '25px',
+          marginLeft: isSidebarVisible ? '650px' : '0px', // Adjust layout when sidebar is hidden
+          transition: 'margin-left 0.3s ease',
+          height: '100vh',
+          
+        }}
+      >
+      <div style={{ flex: 1, padding: '0px' }}>
+        <SelectedIngredients
+          ingredientsList={ingredientsList}
+          memoryTable={memoryTable}
+          handleRemoveIngredient={handleRemoveIngredient}
+          handleGramsChange={handleGramsChange}
+        />
+      </div>
     </div>
+    <div style={{ marginTop: '20px', overflowX: 'auto' }}>
+  <h2>Memory Table (Nutrient Data)</h2>
+  {memoryTable.length === 0 ? (
+    <p>No nutrient data available.</p>
+  ) : (
+    <table
+      style={{
+        width: '100%',
+        borderCollapse: 'collapse',
+        textAlign: 'left',
+      }}
+    >
+      <thead>
+        <tr style={{ backgroundColor: '#f4f4f4', borderBottom: '2px solid #ddd' }}>
+          <th style={{ padding: '10px', border: '1px solid #ddd' }}>FDCID</th>
+          <th style={{ padding: '10px', border: '1px solid #ddd' }}>Grams</th>
+          <th style={{ padding: '10px', border: '1px solid #ddd' }}>NutrientID</th>
+          <th style={{ padding: '10px', border: '1px solid #ddd' }}>Description</th>
+          <th style={{ padding: '10px', border: '1px solid #ddd' }}>Nutrient Name</th>
+          <th style={{ padding: '10px', border: '1px solid #ddd' }}>Unit Value</th>
+          <th style={{ padding: '10px', border: '1px solid #ddd' }}>Unit Name</th>
+        </tr>
+      </thead>
+      <tbody>
+        {memoryTable.map((entry) =>
+          entry.data.map((nutrient, index) => (
+            <tr key={`${entry.fdcid}-${index}`}>
+              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{entry.fdcid}</td>
+              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{entry.grams || '0'}</td> 
+              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{nutrient.nutrientId}</td>
+              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{entry.description}</td>
+              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{nutrient.nutrientName}</td>
+              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{nutrient.unitValue}</td>
+              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{nutrient.unitName}</td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  )}
+</div>
+
+
   </div>
+  
+
   );
   
 };
