@@ -3,6 +3,8 @@ import { useLocation } from 'react-router-dom';
 import FoodCategory from './FoodCategory';
 import SearchFoods from './SearchFoods';
 import SelectedIngredients from './SelectedIngredients';
+import Instructions from './Instructions';
+import SummarizeRecipe from './SummarizeRecipe';
 
 const CreateRecipePage = () => {
   const location = useLocation();
@@ -112,7 +114,7 @@ const CreateRecipePage = () => {
             nutrientName: item.nutrientname,
             unitValue: item.unitvalue * conversionRate, // Apply conversion rate
             unitName: item.unitname,
-            nutrientId: item.nutrientid,
+            nutrientid: item.nutrientid,
           })),
         };
   
@@ -212,7 +214,7 @@ const CreateRecipePage = () => {
         />
       </div>
     </div>
-    <div style={{ marginTop: '20px', overflowX: 'auto' }}>
+    {/* <div style={{ marginTop: '20px', overflowX: 'auto' }}>
   <h2>Memory Table (Nutrient Data)</h2>
   {memoryTable.length === 0 ? (
     <p>No nutrient data available.</p>
@@ -241,7 +243,7 @@ const CreateRecipePage = () => {
             <tr key={`${entry.fdcid}-${index}`}>
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>{entry.fdcid}</td>
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>{entry.grams || '0'}</td> 
-              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{nutrient.nutrientId}</td>
+              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{nutrient.nutrientid}</td>
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>{entry.description}</td>
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>{nutrient.nutrientName}</td>
               <td style={{ padding: '10px', border: '1px solid #ddd' }}>{nutrient.unitValue}</td>
@@ -252,9 +254,10 @@ const CreateRecipePage = () => {
       </tbody>
     </table>
   )}
-</div>
+</div> */}
 
-
+<Instructions />
+<SummarizeRecipe />
   </div>
   
 

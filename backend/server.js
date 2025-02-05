@@ -130,6 +130,7 @@ app.post("/login", async (req, res) => {
                 if (result.rows.length > 0) {
                     const user = result.rows[0];
                     console.log(`User found: ${JSON.stringify(user)}`);
+                    console.log(user)
                     
                     // Compare the provided password with the hashed password stored in the database
                     const isMatch = await bcrypt.compare(password, user.password);
@@ -137,7 +138,7 @@ app.post("/login", async (req, res) => {
                     
                     // If passwords match, login successful
                     if (isMatch) {
-                        res.json({ success: true, message: `Welcome ${user.full_name}.` });
+                      res.json({ success: true, message: `Welcome ${user.full_name}.`, userId: user.id });
                     } else {
                         // If passwords don't match, login failed
                         return res.status(401).send('Invalid username or password');
@@ -269,6 +270,37 @@ app.get("/db/foods", async (req, res) => {
     res.status(500).send("An error occurred while fetching food data.");
   }
 });
+
+// Route for completing a recipe (POST request)
+app.post("/complete-recipe", async (req, res) => {
+  const { userId, recipeName, purpose } = req.body;
+
+  // Check if userId, recipeName, and purpose are provided
+  if (!userId || !recipeName || !purpose) {
+      return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+      // Insert the new recipe into the recipes table
+      const query = `
+          INSERT INTO recipes (usersid, recipe, purpose) 
+          VALUES ($1, $2, $3) 
+          RETURNING *;
+      `;
+      const values = [userId, recipeName, purpose];
+
+      // Execute the SQL query
+      const result = await db.query(query, values);
+
+      console.log("Recipe successfully inserted:", result.rows[0]);
+      res.status(201).json({ success: true, recipe: result.rows[0] });
+
+  } catch (err) {
+      console.error("Error inserting recipe:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 
 // Route to fetch data for a specific ingredient and calculate conversion rates

@@ -11,6 +11,7 @@ function Home  ({items}) {
         try {
           const response = await axios.get("http://localhost:5000/db/foods");
           setFoodNameList(response.data); // Store the fetched data
+          
           navigate("/recipes/create", { state: { foodNameList: response.data } }); // Navigate to Gallery with data
         } catch (error) {
           console.error("Error fetching food data:", error);
